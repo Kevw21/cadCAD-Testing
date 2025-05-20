@@ -88,8 +88,7 @@ def configure_plot(ax, title):
     ax.legend(fontsize=12)
 
 # Shortened Plot (Only meaningful turns)
-# Shortened Plot (Only meaningful turns)
-fig1, ax1 = plt.subplots(figsize=(10, 6))  # Slightly smaller figure
+fig1, ax1 = plt.subplots(figsize=(10, 6))
 
 # Calculate when battle actually ends
 last_meaningful_timestep = df[(df['player_hp'] > 0) & (df['monster_hp'] > 0)]['timestep'].max() + 1
@@ -97,22 +96,22 @@ df_trimmed = df[df['timestep'] <= last_meaningful_timestep]
 
 # Plot only up to battle end
 ax1.plot(df_trimmed['timestep'], df_trimmed['player_hp'], 
-         marker='o', markersize=10, markeredgewidth=2,  # Slightly smaller markers
+         marker='o', markersize=10, markeredgewidth=2,
          linewidth=2, label='Player HP', color='blue')
 ax1.plot(df_trimmed['timestep'], df_trimmed['monster_hp'], 
          marker='s', markersize=10, markeredgewidth=2,
          linewidth=2, label='Monster HP', color='red')
 
 # Set x-axis limits to just cover the battle
-ax1.set_xlim(-0.5, last_meaningful_timestep + 0.5)  # Add small padding
-ax1.set_xticks(range(0, last_meaningful_timestep + 1))  # Only show relevant ticks
+ax1.set_xlim(-0.5, last_meaningful_timestep + 0.5)
+ax1.set_xticks(range(0, last_meaningful_timestep + 1))
 
 # Add annotations
 last_row = df_trimmed.iloc[-1]
 ax1.annotate(f"Final: {last_row['player_hp']} HP",
              xy=(last_row['timestep'], last_row['player_hp']),
              xytext=(5, 10), textcoords='offset points',
-             ha='left', va='bottom', fontsize=10)  # Smaller font
+             ha='left', va='bottom', fontsize=10)
 ax1.annotate(f"Final: {last_row['monster_hp']} HP",
              xy=(last_row['timestep'], last_row['monster_hp']),
              xytext=(5, -25), textcoords='offset points',

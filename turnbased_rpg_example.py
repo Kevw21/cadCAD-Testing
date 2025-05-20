@@ -9,10 +9,10 @@ initial_state = {
     'player_hp': 100,
     'monster_hp': 50,
     'next_attacker': 'player',
-    'battle_active': True  # New flag to track battle state
+    'battle_active': True  # Flag to track battle state
 }
 
-# 3. Policy - Strict Alternation
+# 3. Policy
 def turn_based_policy(params, step, sL, s):
     if not s['battle_active']:
         return {'attacker': 'none', 'damage': 0}
@@ -65,12 +65,12 @@ psubs = [{
 # 6. Simulation Config
 sim_config = {
     'N': 1,
-    'T': range(20),  # Generous upper limit
+    'T': range(20),
     'M': {},
     'stop_condition': lambda s: not s['battle_active']
 }
 
-# 7-8. Run Simulation
+# 7. Run Simulation
 exp = Experiment()
 exp.append_configs(
     initial_state=initial_state,
@@ -81,16 +81,16 @@ exp.append_configs(
 executor = Executor(ExecutionContext(), configs=exp.configs)
 raw_result, _, _ = executor.execute()
 
-# 9. Process Results
+# 8. Process Results
 df = pd.DataFrame(raw_result)
 
 # Filter to only active battle turns
 active_battle_df = df[df['battle_active'] == True]
 
-print("\n⚔️ Corrected Battle Log:")
+print("\n⚔️ Battle Log:")
 print(active_battle_df[['timestep', 'player_hp', 'monster_hp']].to_string(index=False))
 
-# 10. Generate Professional Combat Graph
+# 9. Generate Professional Combat Graph
 plt.figure(figsize=(10, 6))
 
 # Plot only active battle HP lines
@@ -137,7 +137,7 @@ if len(active_battle_df) < len(df):
 plt.tight_layout()
 plt.show()
 
-# Detailed battle log with sequential turn numbering
+# 10. Detailed Battle Sequence
 print("\nBattle Sequence:")
 turn_counter = 1
 for i in range(1, len(df)):
