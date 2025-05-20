@@ -1,4 +1,5 @@
 # 1. Imports
+import random
 from cadCAD.configuration import Experiment
 from cadCAD.engine import ExecutionContext, Executor
 import pandas as pd
@@ -9,19 +10,39 @@ initial_state = {
     'player_hp': 100,
     'monster_hp': 50,
     'next_attacker': 'player',
-    'battle_active': True  # Flag to track battle state
+    'battle_active': True,
+    'last_crit': {'player': False, 'monster': False}  # Track crits
 }
 
 # 3. Policy
 def turn_based_policy(params, step, sL, s):
     if not s['battle_active']:
-        return {'attacker': 'none', 'damage': 0}
+        return {'attacker': 'none', 'damage': 0, 'crit': False}
+    
     if s['next_attacker'] == 'player':
-        return {'attacker': 'player', 'damage': 15}
+        # Set crit chance for monster
+        is_crit = random.random() < 0.75
+        base_dmg = 15
+        dmg = base_dmg * 2 if is_crit else base_dmg
+        return {
+            'attacker': 'player', 
+            'damage': dmg,
+            'crit': is_crit,
+            'base_damage': base_dmg
+        }
     else:
-        return {'attacker': 'monster', 'damage': 10}
+        # Set crit chance for player
+        is_crit = random.random() < 0.5
+        base_dmg = 15
+        dmg = base_dmg * 2 if is_crit else base_dmg
+        return {
+            'attacker': 'monster',
+            'damage': dmg,
+            'crit': is_crit,
+            'base_damage': base_dmg
+        }
 
-# 4. State Updates
+# 4. State Update Functions
 def update_player_hp(params, step, sL, s, inputs):
     if not s['battle_active']:
         return ('player_hp', s['player_hp'])
@@ -47,18 +68,25 @@ def update_attacker(params, step, sL, s, inputs):
         return ('next_attacker', 'player')
 
 def update_battle_state(params, step, sL, s, inputs):
-    # Battle ends when either reaches 0 HP
     battle_over = (s['player_hp'] <= 0) or (s['monster_hp'] <= 0)
     return ('battle_active', not battle_over)
 
-# 5. PSUB
+def update_crit_status(params, step, sL, s, inputs):
+    if inputs['attacker'] == 'player':
+        return ('last_crit', {'player': inputs['crit'], 'monster': s['last_crit']['monster']})
+    elif inputs['attacker'] == 'monster':
+        return ('last_crit', {'player': s['last_crit']['player'], 'monster': inputs['crit']})
+    return ('last_crit', s['last_crit'])
+
+# 5. PSUBs
 psubs = [{
     'policies': {'combat': turn_based_policy},
     'variables': {
         'player_hp': update_player_hp,
         'monster_hp': update_monster_hp,
         'next_attacker': update_attacker,
-        'battle_active': update_battle_state
+        'battle_active': update_battle_state,
+        'last_crit': update_crit_status
     }
 }]
 
@@ -87,57 +115,10 @@ df = pd.DataFrame(raw_result)
 # Filter to only active battle turns
 active_battle_df = df[df['battle_active'] == True]
 
-print("\n⚔️ Battle Log:")
+print("\n⚔️  Battle Log:")
 print(active_battle_df[['timestep', 'player_hp', 'monster_hp']].to_string(index=False))
 
-# 9. Generate Professional Combat Graph
-plt.figure(figsize=(10, 6))
-
-# Plot only active battle HP lines
-plt.plot(active_battle_df['timestep'], active_battle_df['player_hp'], 
-         marker='o', markersize=8, linewidth=2, 
-         color='#3498db', label='Player HP')
-plt.plot(active_battle_df['timestep'], active_battle_df['monster_hp'], 
-         marker='s', markersize=8, linewidth=2, 
-         color='#e74c3c', label='Monster HP')
-
-# Add combat markers and damage text
-for i in range(1, len(df)):
-    if df['monster_hp'][i] < df['monster_hp'][i-1]:  # Player attack
-        dmg = df['monster_hp'][i-1] - df['monster_hp'][i]
-        plt.annotate(f'-{dmg}', 
-                    (df['timestep'][i], df['monster_hp'][i]),
-                    textcoords="offset points", xytext=(0,5),
-                    ha='center', va='bottom', fontsize=10, color='#3498db',
-                    bbox=dict(boxstyle='round,pad=0.2', fc='white', alpha=0.8))
-    elif df['player_hp'][i] < df['player_hp'][i-1]:  # Monster attack
-        dmg = df['player_hp'][i-1] - df['player_hp'][i]
-        plt.annotate(f'-{dmg}', 
-                    (df['timestep'][i], df['player_hp'][i]),
-                    textcoords="offset points", xytext=(0,5),
-                    ha='center', va='bottom', fontsize=10, color='#e74c3c',
-                    bbox=dict(boxstyle='round,pad=0.2', fc='white', alpha=0.8))
-
-# Style the plot
-plt.title('Turn-Based Combat', fontsize=12)
-plt.xlabel('Combat Timesteps', fontsize=10)
-plt.ylabel('Hit Points', fontsize=10)
-plt.xticks(active_battle_df['timestep'])
-plt.grid(True, linestyle='--', alpha=0.4)
-plt.legend()
-
-# Mark battle end
-if len(active_battle_df) < len(df):
-    end_step = active_battle_df['timestep'].max()
-    plt.axvline(x=end_step, color='red', linestyle=':', alpha=0.5)
-    plt.text(end_step+0.2, max(active_battle_df['player_hp'].max(), 
-             active_battle_df['monster_hp'].max())/2,
-             'BATTLE ENDS', rotation=90, color='red')
-
-plt.tight_layout()
-plt.show()
-
-# 10. Detailed Battle Sequence
+# Battle Sequence
 print("\nBattle Sequence:")
 turn_counter = 1
 for i in range(1, len(df)):
@@ -150,11 +131,101 @@ for i in range(1, len(df)):
         
     if curr['monster_hp'] < prev['monster_hp']:
         dmg = prev['monster_hp'] - curr['monster_hp']
-        print(f"Turn {turn_counter}: Player attacks → Monster -{dmg} HP (Remaining: {curr['monster_hp']})")
+        crit_msg = " (CRIT!)" if curr['last_crit']['player'] else ""
+        print(f"Turn {turn_counter}: Player attacks → Monster -{dmg} HP{crit_msg} (Remaining: {curr['monster_hp']})")
         turn_counter += 1
         if curr['monster_hp'] <= 0:
             print(f"  Monster defeated at turn {turn_counter-1}!")
     elif curr['player_hp'] < prev['player_hp']:
         dmg = prev['player_hp'] - curr['player_hp']
-        print(f"Turn {turn_counter}: Monster attacks → Player -{dmg} HP (Remaining: {curr['player_hp']})")
+        crit_msg = " (CRIT!)" if curr['last_crit']['monster'] else ""
+        print(f"Turn {turn_counter}: Monster attacks → Player -{dmg} HP{crit_msg} (Remaining: {curr['player_hp']})")
         turn_counter += 1
+        if curr['player_hp'] <= 0:
+            print(f"  Player defeated at turn {turn_counter-1}!")
+
+# 9. Generate Plotting Data of combat sequence
+plt.figure(figsize=(10, 6))
+
+# Plot HP lines
+player_line, = plt.plot(active_battle_df['timestep'], active_battle_df['player_hp'], 
+                       color='#3498db', linewidth=2, label='Player HP')
+monster_line, = plt.plot(active_battle_df['timestep'], active_battle_df['monster_hp'], 
+                        color='#e74c3c', linewidth=2, label='Monster HP')
+
+# Plot markers for all attacks
+for i in range(1, len(df)):
+    if not df['battle_active'][i]:
+        break
+    # Player attacks (monster HP decreases)
+    if df['monster_hp'][i] < df['monster_hp'][i-1]:
+        if df['last_crit'][i]['player']:  # Critical hit
+            plt.scatter(df['timestep'][i], df['monster_hp'][i], 
+                       s=150, marker='*', color='gold', edgecolor='#3498db', linewidth=1.5,
+                       zorder=3, label='Player Crit' if i == 1 else "")
+            plt.annotate(f'CRIT! -{df["monster_hp"][i-1]-df["monster_hp"][i]}',
+                        (df['timestep'][i], df['monster_hp'][i]),
+                        textcoords="offset points", xytext=(0,15),
+                        ha='center', fontsize=10, color='gold',
+                        bbox=dict(boxstyle='round,pad=0.3', fc='black', alpha=0.7))
+        else:  # Normal hit
+            plt.scatter(df['timestep'][i], df['monster_hp'][i], 
+                       s=80, marker='o', facecolor='white', edgecolor='#3498db', linewidth=1.5,
+                       zorder=2)
+            plt.annotate(f'-{df["monster_hp"][i-1]-df["monster_hp"][i]}',
+                        (df['timestep'][i], df['monster_hp'][i]),
+                        textcoords="offset points", xytext=(0,5),
+                        ha='center', fontsize=9, color='#3498db')
+    
+    # Monster attacks (player HP decreases)
+    elif df['player_hp'][i] < df['player_hp'][i-1]:
+        if df['last_crit'][i]['monster']:  # Critical hit
+            plt.scatter(df['timestep'][i], df['player_hp'][i], 
+                       s=150, marker='*', color='gold', edgecolor='#e74c3c', linewidth=1.5,
+                       zorder=3, label='Monster Crit' if i == 1 else "")
+            plt.annotate(f'CRIT! -{df["player_hp"][i-1]-df["player_hp"][i]}',
+                        (df['timestep'][i], df['player_hp'][i]),
+                        textcoords="offset points", xytext=(0,15),
+                        ha='center', fontsize=10, color='gold',
+                        bbox=dict(boxstyle='round,pad=0.3', fc='black', alpha=0.7))
+        else:  # Normal hit
+            plt.scatter(df['timestep'][i], df['player_hp'][i], 
+                       s=80, marker='s', facecolor='white', edgecolor='#e74c3c', linewidth=1.5,
+                       zorder=2)
+            plt.annotate(f'-{df["player_hp"][i-1]-df["player_hp"][i]}',
+                        (df['timestep'][i], df['player_hp'][i]),
+                        textcoords="offset points", xytext=(0,5),
+                        ha='center', fontsize=9, color='#e74c3c')
+
+# Style the plot
+plt.title('Turn-Based Combat with Critical Hits', fontsize=14, pad=20)
+plt.xlabel('Combat Timesteps', fontsize=12)
+plt.ylabel('Hit Points', fontsize=12)
+plt.xticks(active_battle_df['timestep'])
+plt.grid(True, linestyle='--', alpha=0.4)
+
+# Create custom legend
+from matplotlib.lines import Line2D
+legend_elements = [
+    Line2D([0], [0], color='#3498db', lw=2, label='Player HP'),
+    Line2D([0], [0], color='#e74c3c', lw=2, label='Monster HP'),
+    Line2D([0], [0], marker='o', color='w', markerfacecolor='white', 
+           markeredgecolor='#3498db', markersize=10, label='Player Attack'),
+    Line2D([0], [0], marker='s', color='w', markerfacecolor='white', 
+           markeredgecolor='#e74c3c', markersize=10, label='Monster Attack'),
+    Line2D([0], [0], marker='*', color='w', markerfacecolor='gold', 
+           markeredgecolor='black', markersize=15, label='Critical Hit')
+]
+plt.legend(handles=legend_elements, loc='upper right')
+
+# Mark battle end
+if len(active_battle_df) < len(df):
+    end_step = active_battle_df['timestep'].max()
+    plt.axvline(x=end_step, color='red', linestyle=':', alpha=0.5)
+    plt.text(end_step+0.2, max(active_battle_df['player_hp'].max(), 
+             active_battle_df['monster_hp'].max())/2,
+             'BATTLE ENDS', rotation=90, color='red', fontsize=12,
+             bbox=dict(facecolor='white', edgecolor='red', boxstyle='round'))
+
+plt.tight_layout()
+plt.show()
