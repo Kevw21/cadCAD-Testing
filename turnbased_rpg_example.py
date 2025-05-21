@@ -11,8 +11,10 @@ from matplotlib.lines import Line2D
 initial_state = {
     'player_hp': 250,
     'monster_hp': 200,
+    'player_base_damage': 15,
+    'monster_base_damage': 15,
     'player_evasion': 0.25,
-    'monster_evasion': 0.10,
+    'monster_evasion': 0.25,
     'player_crit_chance': 0.35,
     'monster_crit_chance': 0.50,
     'next_attacker': 'player',
@@ -29,7 +31,7 @@ def turn_based_policy(params, step, sL, s):
     if s['next_attacker'] == 'player':
         evaded = random.random() < s['monster_evasion']
         is_crit = random.random() < s['player_crit_chance'] if not evaded else False
-        base_dmg = 15
+        base_dmg = s['player_base_damage']
         dmg = base_dmg * 2 if is_crit and not evaded else (0 if evaded else base_dmg)
         return {
             'attacker': 'player', 
@@ -41,7 +43,7 @@ def turn_based_policy(params, step, sL, s):
     else:
         evaded = random.random() < s['player_evasion']
         is_crit = random.random() < s['monster_crit_chance'] if not evaded else False
-        base_dmg = 15
+        base_dmg = s['monster_base_damage']
         dmg = base_dmg * 2 if is_crit and not evaded else (0 if evaded else base_dmg)
         return {
             'attacker': 'monster',
@@ -115,19 +117,8 @@ sim_config = {
     'stop_condition': lambda s: not s['battle_active']
 }
 
-# 7. Run Simulation
-exp = Experiment()
-exp.append_configs(
-    initial_state=initial_state,
-    partial_state_update_blocks=psubs,
-    sim_configs=[sim_config]
-)
-
-executor = Executor(ExecutionContext(), configs=exp.configs)
-raw_result, _, _ = executor.execute()
-
-# 8. Monte Carlo Simulation Runs
-num_simulations = 10  # Number of combat scenarios to simulate
+# 7. Monte Carlo Simulation Runs
+num_simulations = 50
 all_simulations = []
 
 print(f"\nRunning {num_simulations} combat scenarios...")
@@ -144,7 +135,7 @@ for run in range(num_simulations):
     df = pd.DataFrame(raw_result)
     all_simulations.append(df)
 
-# 9. Process Results and Plot
+# 8. Process Results and Plot
 plt.figure(figsize=(14, 8))
 
 # Colors and styling
@@ -152,7 +143,7 @@ player_color = '#3498db'
 monster_color = '#e74c3c'
 crit_color = 'gold'
 evade_color = '#2ecc71'
-alpha = 0.15  # Transparency for individual runs
+alpha = 0.15
 
 # Plot all simulation runs
 for df in all_simulations:
