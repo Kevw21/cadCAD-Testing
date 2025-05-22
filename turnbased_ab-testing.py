@@ -9,15 +9,15 @@ from matplotlib.lines import Line2D
 
 # 2. Define the two scenarios for A/B testing
 scenario_a = {
-    'name': 'High Crit Player',
+    'name': 'High HP Player',
     'initial_state': {
-        'player_hp': 250,
+        'player_hp': 300,
         'monster_hp': 200,
         'player_base_damage': 15,
         'monster_base_damage': 15,
-        'player_evasion': 0.15,  # Lower evasion
+        'player_evasion': 0.3,
         'monster_evasion': 0.25,
-        'player_crit_chance': 0.50,  # Higher crit chance
+        'player_crit_chance': 0.25,
         'monster_crit_chance': 0.50,
         'next_attacker': 'player',
         'battle_active': True,
@@ -27,15 +27,15 @@ scenario_a = {
 }
 
 scenario_b = {
-    'name': 'High Evasion Player',
+    'name': 'High Attack Player',
     'initial_state': {
-        'player_hp': 250,
+        'player_hp': 200,
         'monster_hp': 200,
-        'player_base_damage': 15,
+        'player_base_damage': 20,
         'monster_base_damage': 15,
-        'player_evasion': 0.40,  # Higher evasion
+        'player_evasion': 0.3,
         'monster_evasion': 0.25,
-        'player_crit_chance': 0.20,  # Lower crit chance
+        'player_crit_chance': 0.25,
         'monster_crit_chance': 0.50,
         'next_attacker': 'player',
         'battle_active': True,
@@ -182,7 +182,7 @@ def analyze_scenario(scenario, simulation_results):
         monster_final_hps.append(active_sim['monster_hp'].iloc[-1])
         
         # Calculate crit and evade rates
-        total_attacks = len(active_sim) - 1  # Subtract initial state
+        total_attacks = len(active_sim) - 1
         player_crits = sum(1 for i in range(1, len(active_sim)) 
                         if active_sim['last_crit'].iloc[i]['player'])
         monster_crits = sum(1 for i in range(1, len(active_sim)) 
@@ -230,12 +230,14 @@ print(f"  Average Player Final HP: {analysis_b['avg_player_final_hp']:.1f}")
 print(f"  Average Crit Rate: {analysis_b['avg_crit_rate']*100:.1f}%")
 print(f"  Average Evade Rate: {analysis_b['avg_evade_rate']*100:.1f}%")
 
-# 9. Plot Comparative Results
 plt.figure(figsize=(14, 10))
+
+# Get scenario names from the configurations
+scenario_names = [scenario_a['name'], scenario_b['name']]
 
 # Victory Rate Comparison
 plt.subplot(2, 2, 1)
-plt.bar(['High Crit', 'High Evade'], 
+plt.bar(scenario_names, 
         [analysis_a['victory_rate']*100, analysis_b['victory_rate']*100],
         color=['#3498db', '#2ecc71'])
 plt.title('Player Victory Rate Comparison')
@@ -244,7 +246,7 @@ plt.ylim(0, 100)
 
 # Battle Length Comparison
 plt.subplot(2, 2, 2)
-plt.bar(['High Crit', 'High Evade'], 
+plt.bar(scenario_names, 
         [analysis_a['avg_battle_length'], analysis_b['avg_battle_length']],
         color=['#3498db', '#2ecc71'])
 plt.title('Average Battle Length Comparison')
@@ -259,7 +261,7 @@ plt.bar(index, [analysis_a['avg_player_final_hp'], analysis_b['avg_player_final_
 plt.bar(index + bar_width, [analysis_a['avg_monster_final_hp'], analysis_b['avg_monster_final_hp']],
         bar_width, label='Monster', color=['#e74c3c', '#e74c3c'])
 plt.title('Average Final HP Comparison')
-plt.xticks(index + bar_width/2, ['High Crit', 'High Evade'])
+plt.xticks(index + bar_width/2, scenario_names)
 plt.ylabel('Hit Points')
 plt.legend()
 
@@ -270,44 +272,9 @@ plt.bar(index, [analysis_a['avg_crit_rate']*100, analysis_b['avg_crit_rate']*100
 plt.bar(index + bar_width, [analysis_a['avg_evade_rate']*100, analysis_b['avg_evade_rate']*100],
         bar_width, label='Evade Rate', color='#9b59b6')
 plt.title('Event Rates Comparison')
-plt.xticks(index + bar_width/2, ['High Crit', 'High Evade'])
+plt.xticks(index + bar_width/2, scenario_names)
 plt.ylabel('Rate (%)')
 plt.legend()
 
 plt.tight_layout()
 plt.show()
-
-# 10. Statistical Significance Test
-from scipy import stats
-
-# Prepare data for t-tests
-def get_outcomes(simulation_results):
-    return [1 if sim[sim['battle_active'] == True]['monster_hp'].iloc[-1] <= 0 
-            else 0 for sim in simulation_results]
-
-a_outcomes = get_outcomes(results['scenario_a'])
-b_outcomes = get_outcomes(results['scenario_b'])
-
-# Perform chi-square test for victory rates
-chi2, p_val, _, _ = stats.chi2_contingency([
-    [sum(a_outcomes), num_simulations - sum(a_outcomes)],
-    [sum(b_outcomes), num_simulations - sum(b_outcomes)]
-])
-
-print("\n=== Statistical Significance ===")
-print(f"Chi-square test p-value: {p_val:.4f}")
-if p_val < 0.05:
-    print("The difference in victory rates is statistically significant (p < 0.05)")
-else:
-    print("The difference in victory rates is not statistically significant (p ≥ 0.05)")
-
-# Perform t-test for battle lengths
-a_lengths = [len(sim[sim['battle_active'] == True]) for sim in results['scenario_a']]
-b_lengths = [len(sim[sim['battle_active'] == True]) for sim in results['scenario_b']]
-t_stat, p_val = stats.ttest_ind(a_lengths, b_lengths)
-
-print(f"\nT-test for battle lengths p-value: {p_val:.4f}")
-if p_val < 0.05:
-    print("The difference in battle lengths is statistically significant (p < 0.05)")
-else:
-    print("The difference in battle lengths is not statistically significant (p ≥ 0.05)")
