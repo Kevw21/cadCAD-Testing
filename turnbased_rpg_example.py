@@ -235,7 +235,7 @@ legend_elements = [
     Line2D([0], [0], color='red', alpha=0.2, lw=10, label='Monster Win %'),
     Line2D([0], [0], marker='*', color='w', markerfacecolor=crit_color, 
            markersize=15, label='Critical Hit'),
-    Line2D([0], [0], marker='x', color='w', markerfacecolor=evade_color,
+    Line2D([0], [0], marker='x', color='green', markerfacecolor=evade_color,
            markersize=12, label='Evaded Attack')
 ]
 

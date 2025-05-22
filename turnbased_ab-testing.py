@@ -255,7 +255,7 @@ plt.subplot(2, 2, 3)
 bar_width = 0.35
 index = np.arange(2)
 plt.bar(index, [analysis_a['avg_player_final_hp'], analysis_b['avg_player_final_hp']],
-        bar_width, label='Player', color=['#3498db', '#2ecc71'])
+        bar_width, label='Player', color=['#3498db', '#3498db'])
 plt.bar(index + bar_width, [analysis_a['avg_monster_final_hp'], analysis_b['avg_monster_final_hp']],
         bar_width, label='Monster', color=['#e74c3c', '#e74c3c'])
 plt.title('Average Final HP Comparison')
@@ -275,7 +275,6 @@ plt.ylabel('Rate (%)')
 plt.legend()
 
 plt.tight_layout()
-plt.suptitle('A/B Testing: High Crit vs High Evasion Player Strategies', y=1.02, fontsize=14)
 plt.show()
 
 # 10. Statistical Significance Test
