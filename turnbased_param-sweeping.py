@@ -113,7 +113,7 @@ sim_config = {
 
 # Define Parameter Ranges
 param_sweep = {
-    'player_crit_chance': [0.2, 0.35, 0.5],  # Low/Medium/High crit chance
+    'player_crit_chance': [0.25, 0.5, 0.75],  # Low/Medium/High crit chance
     'monster_evasion': [0.1, 0.25, 0.4],     # Low/Medium/High evasion
 }
 
