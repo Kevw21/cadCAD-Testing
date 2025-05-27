@@ -14,10 +14,9 @@ initial_state = {
 
 # Policy Functions
 def p_random_events(params, substep, state_history, previous_state):
-    # Lowered event strength to reflect more realistic behavior
-    event_strength = np.random.normal(0, 0.002)  # ~0.2%
+    event_strength = np.random.normal(0, 0.002)
     if np.random.random() < 0.1:
-        event_strength = np.random.normal(0, 0.01)  # ~1% rare event
+        event_strength = np.random.normal(0, 0.01)
     return {'random_event': event_strength}
 
 def p_update_momentum(params, substep, state_history, previous_state):
@@ -42,17 +41,15 @@ def p_update_sentiment(params, substep, state_history, previous_state):
 # State Update Functions
 def s_price(params, substep, state_history, previous_state, policy_input):
     current_price = previous_state['price']
-    base_change = np.random.normal(0.0002, 0.001)  # Small average drift
+    base_change = np.random.normal(0.0002, 0.001)
 
-    sentiment_factor = 0.5 + previous_state['market_sentiment']  # 0.5 to 1.5
-    momentum_effect = previous_state['momentum'] * 0.05 * sentiment_factor  # Weakened
+    sentiment_factor = 0.5 + previous_state['market_sentiment']
+    momentum_effect = previous_state['momentum'] * 0.05 * sentiment_factor
 
-    # Panic sells if sentiment is very low
     event_effect = policy_input['random_event'] * (1.5 - previous_state['market_sentiment'])
 
-    # Combine effects and clamp the change to [-2%, +2%]
     total_change = base_change + momentum_effect + event_effect
-    total_change = np.clip(total_change, -0.02, 0.02)  # Clamp to ±2%
+    total_change = np.clip(total_change, -0.02, 0.02)
 
     new_price = current_price * (1 + total_change)
     new_price = max(0.01, new_price)
@@ -93,7 +90,7 @@ sys_config = {
 
 sim_config = {
     'N': 1,
-    'T': range(31),  # Simulate 31 timesteps
+    'T': range(24), 
     'M': {}
 }
 
@@ -108,12 +105,32 @@ exec_ctx = ExecutionContext(exec_mode.local_mode)
 executor = Executor(exec_ctx, experiment.configs)
 raw_result, tensor_field, sessions = executor.execute()
 
-# Plotting
+# Create DataFrame from raw results
 df = pd.DataFrame(raw_result)
+
+# Calculate Hourly Fluctuation %
+fluctuations = []
+prices = df['price'].values
+
+for i in range(1, len(prices)):
+    prev_price = prices[i - 1]
+    curr_price = prices[i]
+    change_pct = ((curr_price - prev_price) / prev_price) * 100
+    fluctuations.append({
+        'From Hour': i - 1,
+        'To Hour': i,
+        'Price Change (%)': round(change_pct, 4)
+    })
+
+fluctuation_df = pd.DataFrame(fluctuations)
+print("\nHourly Price Fluctuations (%):")
+print(fluctuation_df.to_string(index=False))
+
+# Plotting
 plt.figure(figsize=(10, 5))
 plt.plot(df['timestep'], df['price'])
-plt.title('Realistic Cryptocurrency Price Prediction')
-plt.xlabel('Time Step (e.g., hourly)')
+plt.title('Cryptocurrency Price Prediction')
+plt.xlabel('Hourly Timesteps')
 plt.ylabel('Price (USD)')
 plt.grid(True)
 plt.show()
