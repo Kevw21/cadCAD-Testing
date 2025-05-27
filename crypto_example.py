@@ -39,7 +39,7 @@ def s_price(params, substep, state_history, previous_state, policy_input):
     momentum_effect = previous_state['momentum'] * 0.05 * sentiment_factor
     event_effect = policy_input['random_event'] * (1.5 - previous_state['market_sentiment'])
     total_change = base_change + momentum_effect + event_effect
-    total_change = np.clip(total_change, -0.02, 0.02)
+    total_change = np.clip(total_change, -0.015, 0.015)
     new_price = current_price * (1 + total_change)
     new_price = max(0.01, new_price)
     return ('price', new_price)
