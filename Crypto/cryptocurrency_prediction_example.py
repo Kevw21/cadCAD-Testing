@@ -14,8 +14,8 @@ def p_random_events(params, substep, state_history, previous_state):
 
 def p_update_momentum(params, substep, state_history, previous_state):
     history = previous_state['price_history']
-    if len(history) >= 3:
-        change = (history[-1] - history[-3]) / history[-3]
+    if len(history) >= 5:
+        change = (history[-1] - history[-5]) / history[-5]
     else:
         change = 0
     new_momentum = 0.7 * previous_state['momentum'] + 0.3 * change
@@ -63,8 +63,8 @@ def run_simulation():
     for run_id in range(runs):
         # Setup experiment
         initial_state = {
-            'price': 109670.53,
-            'price_history': [109660.59, 109663.97, 109623.48],
+            'price': 104745.90,
+            'price_history': [104706.40, 104550.60, 104230.80, 104314.40, 104499.80],
             'momentum': 0,
             'market_sentiment': 0.5
         }

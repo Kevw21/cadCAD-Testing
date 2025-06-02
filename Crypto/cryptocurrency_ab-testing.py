@@ -14,8 +14,8 @@ def p_random_events(params, substep, state_history, previous_state):
 
 def p_update_momentum(params, substep, state_history, previous_state):
     history = previous_state['price_history']
-    if len(history) >= 3:
-        change = (history[-1] - history[-3]) / history[-3]
+    if len(history) >= 5:
+        change = (history[-1] - history[-5]) / history[-5]
     else:
         change = 0
     # Modified in Scenario B through params
@@ -62,8 +62,8 @@ def run_scenario(scenario_name, params, runs=30):
 
     for run_id in range(runs):
         initial_state = {
-            'price': 109670.53,
-            'price_history': [109660.59, 109663.97, 109623.48],
+            'price': 104745.90,
+            'price_history': [104706.40, 104550.60, 104230.80, 104314.40, 104499.80],
             'momentum': 0,
             'market_sentiment': 0.5
         }
@@ -114,14 +114,14 @@ def run_scenario(scenario_name, params, runs=30):
     return pd.concat(all_runs)
 
 def run_ab_test():
-    # Scenario A
+    # Scenario A (Stable Market)
     params_a = {
         'momentum_decay': 0.7,
         'momentum_impact': 0.05,
         'sentiment_sensitivity': 0.5
     }
     
-    # Scenario B
+    # Scenario B (Volatile Market)
     params_b = {
         'momentum_decay': 0.3,
         'momentum_impact': 0.15,
@@ -142,7 +142,7 @@ def run_ab_test():
     # Plotting both scenarios
     plt.figure(figsize=(14, 7))
     
-    # Plot individual runs (light colors)
+    # Plot individual runs
     for scenario, color in [('Scenario A', 'lightblue'), ('Scenario B', 'lightcoral')]:
         scenario_df = combined_df[combined_df['scenario'] == scenario]
         for run_id in scenario_df['run'].unique():
@@ -150,7 +150,7 @@ def run_ab_test():
             plt.plot(subset['timestep'], subset['price'], 
                     color=color, alpha=0.2, linewidth=0.8)
     
-    # Plot average lines (bold colors)
+    # Plot average lines
     for scenario, color in [('Scenario A', 'blue'), ('Scenario B', 'red')]:
         subset = avg_prices[avg_prices['scenario'] == scenario]
         plt.plot(subset['timestep'], subset['avg_price'], 
@@ -177,7 +177,7 @@ def run_ab_test():
     print(f"Difference: ${(avg_final['Scenario B'] - avg_final['Scenario A']):,.2f} "
           f"({(avg_final['Scenario B']/avg_final['Scenario A']-1)*100:.2f}%)")
 
-    # Volatility comparison (standard deviation of price changes)
+    # Volatility comparison
     def calc_volatility(df):
         changes = df['price'].pct_change().dropna()
         return changes.std()
