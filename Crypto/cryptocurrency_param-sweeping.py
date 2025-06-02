@@ -36,6 +36,7 @@ def s_price(params, substep, state_history, previous_state, policy_input):
     current_price = previous_state['price']
     base_change = np.random.normal(0.0002, 0.001)
     sentiment_factor = 0.5 + previous_state['market_sentiment']
+    # Dynamic momentum impact based on parameter sweeping
     momentum_effect = previous_state['momentum'] * params['momentum_impact'] * sentiment_factor
     event_effect = policy_input['random_event'] * (1.5 - previous_state['market_sentiment'])
     total_change = base_change + momentum_effect + event_effect

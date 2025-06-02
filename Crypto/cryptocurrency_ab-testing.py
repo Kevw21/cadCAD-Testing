@@ -18,7 +18,7 @@ def p_update_momentum(params, substep, state_history, previous_state):
         change = (history[-1] - history[-5]) / history[-5]
     else:
         change = 0
-    # Modified in Scenario B through params
+    # Momentum Decay controls how fast past momentum decays.
     new_momentum = params['momentum_decay'] * previous_state['momentum'] + (1 - params['momentum_decay']) * change
     return {'momentum_change': new_momentum}
 
@@ -26,7 +26,7 @@ def p_update_sentiment(params, substep, state_history, previous_state):
     price_history = previous_state['price_history']
     if len(price_history) >= 2:
         recent_change = (price_history[-1] - price_history[-2]) / price_history[-2]
-        # Modified in Scenario B through params
+        # Sentiment sensitivity controls how fast sentiment reacts to price changes.
         new_sentiment = previous_state['market_sentiment'] + params['sentiment_sensitivity'] * recent_change
         new_sentiment = max(0, min(1, new_sentiment))
     else:
@@ -38,6 +38,7 @@ def s_price(params, substep, state_history, previous_state, policy_input):
     current_price = previous_state['price']
     base_change = np.random.normal(0.0002, 0.001)
     sentiment_factor = 0.5 + previous_state['market_sentiment']
+    # Momentum impact amplifies how much momentum influences price.
     momentum_effect = previous_state['momentum'] * params['momentum_impact'] * sentiment_factor
     event_effect = policy_input['random_event'] * (1.5 - previous_state['market_sentiment'])
     total_change = base_change + momentum_effect + event_effect
@@ -118,14 +119,14 @@ def run_ab_test():
     params_a = {
         'momentum_decay': 0.7,
         'momentum_impact': 0.05,
-        'sentiment_sensitivity': 0.5
+        'sentiment_sensitivity': 0.1
     }
     
     # Scenario B (Volatile Market)
     params_b = {
         'momentum_decay': 0.3,
         'momentum_impact': 0.15,
-        'sentiment_sensitivity': 0.1
+        'sentiment_sensitivity': 0.5
     }
     
     runs = 30  # Number of Monte Carlo simulations per scenario
